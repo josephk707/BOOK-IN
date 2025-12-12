@@ -1,0 +1,136 @@
+/* === NEON FORM STYLES === */
+
+.profile-wrapper {
+  padding: 20px;
+  width: 100%;
+  max-width: 900px;
+  margin: auto;
+}
+
+.section-card {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 20px;
+  margin-bottom: 25px;
+  border-radius: 15px;
+  box-shadow: 0 0 20px rgba(255, 0, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.section-title {
+  color: #ff73fa;
+  font-size: 20px;
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+.row-item {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+
+.neon-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid #ff73fa;
+  padding: 12px;
+  border-radius: 10px;
+  color: white;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.neon-input:focus {
+  outline: none;
+  border-color: #00e1ff;
+  box-shadow: 0 0 10px rgba(0, 225, 255, 0.3);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.neon-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.add-btn {
+  padding: 10px 20px;
+  background: linear-gradient(45deg, #ff00ff, #ff73fa);
+  border-radius: 10px;
+  border: none;
+  margin-top: 10px;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 10px rgba(255, 0, 255, 0.3);
+}
+
+.add-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
+}
+
+.delete-btn {
+  padding: 10px 14px;
+  background: linear-gradient(45deg, #ff3b3b, #ff6b6b);
+  border-radius: 10px;
+  border: none;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 10px rgba(255, 59, 59, 0.3);
+}
+
+.delete-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 15px rgba(255, 59, 59, 0.5);
+}
+
+.save-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(45deg, #00e1ff, #22d3ee);
+  border: none;
+  color: #000;
+  font-weight: bold;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 18px;
+  margin-top: 20px;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 15px rgba(0, 225, 255, 0.3);
+}
+
+.save-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px rgba(0, 225, 255, 0.5);
+}
+
+.save-btn:active {
+  transform: translateY(0);
+}
+
+/* === RESPONSIVE DESIGN === */
+@media (max-width: 768px) {
+  .profile-wrapper {
+    padding: 15px;
+  }
+
+  .section-card {
+    padding: 15px;
+    margin-bottom: 20px;
+  }
+
+  .row-item {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .neon-input {
+    width: 100%;
+  }
+
+  .section-title {
+    font-size: 18px;
+  }
+}

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import CreatableSelect from "react-select/creatable";
 import "./BusinessDashboard.css";
+import EditProfile from "./EditProfile";
 
 const API_URL = "http://localhost:5000/api/v1/createshop";
 
@@ -947,39 +948,129 @@ const BusinessDashboard = () => {
 
         <h3>Services</h3>
         {businessData.services.map((service, index) => (
-          <div key={index} className="grid-3 relaxed-grid">
-            <div className="field">
-              <label>Service Name</label>
-              <input
-                type="text"
-                value={service.serviceName}
-                onChange={(e) =>
-                  handleServiceChange(index, "serviceName", e.target.value)
-                }
-              />
+          <div key={index} className="service-block glass-box">
+            <div className="grid-3 relaxed-grid">
+              <div className="field">
+                <label>Service Name</label>
+                <input
+                  type="text"
+                  placeholder="Service name"
+                  value={service.serviceName}
+                  onChange={(e) =>
+                    handleServiceChange(index, "serviceName", e.target.value)
+                  }
+                />
+              </div>
+              <div className="field">
+                <label>Duration (min)</label>
+                <input
+                  type="number"
+                  placeholder="30"
+                  value={service.serviceDuration}
+                  onChange={(e) =>
+                    handleServiceChange(index, "serviceDuration", e.target.value)
+                  }
+                />
+              </div>
+              <div className="field">
+                <label>Price (₹)</label>
+                <input
+                  type="number"
+                  placeholder="500"
+                  value={service.servicePrice}
+                  onChange={(e) =>
+                    handleServiceChange(index, "servicePrice", e.target.value)
+                  }
+                />
+              </div>
             </div>
-            <div className="field">
-              <label>Duration (min)</label>
-              <input
-                type="number"
-                value={service.serviceDuration}
-                onChange={(e) =>
-                  handleServiceChange(index, "serviceDuration", e.target.value)
-                }
-              />
-            </div>
-            <div className="field">
-              <label>Price (₹)</label>
-              <input
-                type="number"
-                value={service.servicePrice}
-                onChange={(e) =>
-                  handleServiceChange(index, "servicePrice", e.target.value)
-                }
-              />
-            </div>
+
+            {businessData.services.length > 1 && (
+              <button
+                type="button"
+                className="btn-remove small"
+                onClick={() => removeService(index)}
+              >
+                ❌ Remove Service
+              </button>
+            )}
           </div>
         ))}
+
+        <div className="actions-left">
+          <button
+            type="button"
+            className="btn-secondary small"
+            onClick={addService}
+          >
+            ➕ Add Another Service
+          </button>
+        </div>
+
+        <h3>Time Slots</h3>
+        {businessData.timeSlots.map((slot, index) => (
+          <div key={index} className="time-slot-block glass-box">
+            <div className="grid-4 relaxed-grid">
+              <div className="field">
+                <label>Date</label>
+                <input
+                  type="date"
+                  value={slot.date}
+                  onChange={(e) => handleSlotChange(index, "date", e.target.value)}
+                />
+              </div>
+
+              <div className="field">
+                <label>Status</label>
+                <select
+                  value={slot.status}
+                  onChange={(e) => handleSlotChange(index, "status", e.target.value)}
+                >
+                  <option value="free">Free</option>
+                  <option value="booked">Booked</option>
+                </select>
+              </div>
+
+              <div className="field">
+                <label>Start Time</label>
+                <input
+                  type="time"
+                  value={slot.startTime}
+                  onChange={(e) => handleSlotChange(index, "startTime", e.target.value)}
+                />
+              </div>
+
+              <div className="field">
+                <label>End Time</label>
+                <input
+                  type="time"
+                  value={slot.endTime}
+                  onChange={(e) => handleSlotChange(index, "endTime", e.target.value)}
+                />
+              </div>
+            </div>
+
+            {businessData.timeSlots.length > 1 && (
+              <button
+                type="button"
+                className="btn-remove small"
+                onClick={() => removeTimeSlot(index)}
+              >
+                ❌ Remove Time Slot
+              </button>
+            )}
+          </div>
+        ))}
+
+        <div className="actions-left">
+          <button
+            type="button"
+            className="btn-secondary small"
+            onClick={addTimeSlot}
+          >
+            ➕ Add Another Time Slot
+          </button>
+        </div>
 
         <div className="actions-right">
           <button className="btn-primary glow" onClick={handleUpdateBusiness} disabled={loading}>
