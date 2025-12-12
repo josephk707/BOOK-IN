@@ -1,0 +1,13 @@
+/* global reset */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top left, #ffe2ff 0, #ffd5f1 35%, #fdf2ff 70%, #ffffff 100%);
+  color: #2b123a;
+}
