@@ -1,0 +1,108 @@
+.edit-wrapper {
+  width: 100%;
+  padding: 40px 60px;
+  color: #fff;
+  display: flex;
+  justify-content: center;
+}
+
+.edit-card {
+  width: 70%;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 35px;
+  border-radius: 20px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 0 25px rgba(168, 85, 247, 0.3);
+  animation: fadeIn 0.4s ease;
+}
+
+.edit-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 25px;
+  color: #e879f9;
+}
+
+.field-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.field label {
+  font-size: 14px;
+  opacity: 0.8;
+  margin-bottom: 5px;
+}
+
+.field input {
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.section-title {
+  margin-top: 25px;
+  margin-bottom: 10px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #c084fc;
+}
+
+.block {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.save-btn {
+  margin-top: 20px;
+  padding: 14px 35px;
+  background: linear-gradient(90deg, #ff3df9, #a855f7);
+  border: none;
+  border-radius: 30px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.6);
+  transition: 0.2s;
+}
+
+.save-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 28px rgba(255, 0, 255, 0.85);
+}
+
+.status-msg {
+  margin-top: 12px;
+  font-size: 15px;
+}
+
+.success {
+  color: #4ade80;
+}
+
+.error {
+  color: #f87171;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

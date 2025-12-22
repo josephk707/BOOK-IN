@@ -1,5 +1,3 @@
-/* === NEON FORM STYLES === */
-
 .profile-wrapper {
   padding: 20px;
   width: 100%;
@@ -13,14 +11,12 @@
   margin-bottom: 25px;
   border-radius: 15px;
   box-shadow: 0 0 20px rgba(255, 0, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .section-title {
   color: #ff73fa;
   font-size: 20px;
   margin-bottom: 15px;
-  font-weight: 600;
 }
 
 .row-item {
@@ -37,15 +33,39 @@
   padding: 12px;
   border-radius: 10px;
   color: white;
-  font-size: 14px;
-  transition: all 0.3s ease;
 }
 
-.neon-input:focus {
-  outline: none;
-  border-color: #00e1ff;
-  box-shadow: 0 0 10px rgba(0, 225, 255, 0.3);
-  background: rgba(255, 255, 255, 0.15);
+.add-btn {
+  padding: 10px 20px;
+  background: #ff00ff;
+  border-radius: 10px;
+  border: none;
+  margin-top: 10px;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.delete-btn {
+  padding: 10px 14px;
+  background: #ff3b3b;
+  border-radius: 10px;
+  border: none;
+  color: white;
+  cursor: pointer;
+}
+
+.save-btn {
+  width: 100%;
+  padding: 14px;
+  background: #00e1ff;
+  border: none;
+  color: black;
+  font-weight: bold;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 18px;
+  margin-top: 20px;
 }
 
 .neon-input::placeholder {

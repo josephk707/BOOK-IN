@@ -1,15 +1,16 @@
+// src/BusinessDashboard.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import CreatableSelect from "react-select/creatable";
+import { auth, db } from "./firebase";
+import { doc, getDoc } from "firebase/firestore";
 import "./BusinessDashboard.css";
-import EditProfile from "./EditProfile";
+import { getAuth } from "firebase/auth";
+
+
 
 const API_URL = "http://localhost:5000/api/v1/createshop";
-
-// Cloudinary configuration for image uploads
-const CLOUDINARY_UPLOAD_URL = "https://api.cloudinary.com/v1_1/demo/image/upload"; // Using demo for now - replace with your cloud name
-const CLOUDINARY_UPLOAD_PRESET = "ml_default"; // Using default preset - replace with your upload preset
 
 const CATEGORIES = [
   { value: "beauty", label: "Beauty & Personal Care", icon: "💄" },
@@ -26,43 +27,76 @@ const CATEGORIES = [
   { value: "creative", label: "Creative & Production Services", icon: "🎨" },
 ];
 
-// Map short value to full enum value for backend
-const getCategoryEnumValue = (shortValue) => {
-  const cat = CATEGORIES.find(c => c.value === shortValue);
-  return cat ? cat.label : shortValue;
-};
-
-// Category -> Suggested services mapping
 const CATEGORY_SERVICES = {
   "Beauty & Personal Care": [
-    "Makeup & Styling",
-    "Bridal Makeup",
-    "Party Makeup",
-    "Hair Styling",
-    "Saree Draping",
-    "Facial / Skincare",
-    "Waxing / Threading",
-    "Body Spa & Massage",
-    "Nail Extensions",
-    "Lash Extensions",
-    "Brow Shaping",
+    {
+      subCategory: "Makeup Services",
+      services: [
+        "Party makeup",
+        "Engagement makeup",
+        "Photoshoot makeup",
+        "Editorial / glam",
+        "HD vs Airbrush makeup",
+      ],
+    },
+    {
+      subCategory: "Hair Services",
+      services: [
+        "Styling (blow-dry, curls, straightening)",
+        "Braiding",
+        "Updos",
+        "Basic grooming",
+      ],
+    },
+    {
+      subCategory: "Skin & Facial Care",
+      services: [
+        "Basic facials",
+        "Advanced facials",
+        "Acne care",
+        "Anti-ageing facials",
+        "Clean-ups",
+        "De-tan",
+        "Body polishing",
+      ],
+    },
+    {
+      subCategory: "Grooming & Body Care",
+      services: [
+        "Waxing",
+        "Threading",
+        "Body scrub",
+        "Massage (non-therapeutic)",
+      ],
+    },
+    {
+      subCategory: "Nail & Lash Services",
+      services: [
+        "Nail extensions",
+        "Gel polish",
+        "Nail art",
+        "Lash extensions",
+        "Brow lamination / tinting",
+      ],
+    },
+    {
+      subCategory: "Spa & Wellness Body Treatments",
+      services: [
+        "Spa massages",
+        "Aroma therapy",
+        "Reflexology",
+        "Head massage",
+        "Foot spa",
+      ],
+    },
   ],
   "Fitness & Wellness": [
-    "Personal Fitness Training",
-    "Yoga / Pilates",
-    "Zumba / Dance Fitness",
-    "Nutrition & Diet Plans",
-    "Physiotherapy / Rehab",
-    "Reiki / Sound Healing",
+    "Personal Fitness Training", "Yoga / Pilates", "Zumba / Dance Fitness",
+    "Nutrition & Diet Plans", "Physiotherapy / Rehab", "Reiki / Sound Healing",
   ],
   "Coaching & Skill Development": [
-    "Music / Singing",
-    "Dance Training",
-    "Art & Craft",
-    "Photography Training",
-    "Public Speaking",
-    "Life & Career Coaching",
-    "Astrology / Tarot",
+    "Music / Singing", "Dance Training", "Art & Craft", "Photography Training",
+    "Public Speaking", "Life & Career Coaching", "Astrology / Tarot",
   ],
   "Home & Lifestyle Services": ["Home Cleaning", "Appliance Repair", "Interior Design"],
   "Events & Entertainment": ["Event Planning", "DJ / Music", "Photography"],
@@ -75,435 +109,281 @@ const CATEGORY_SERVICES = {
   "Creative & Production Services": ["Video Production", "Photography", "Content Creation"],
 };
 
+
+const BASE_URL = "http://localhost:5000/api/v1/getshopbyid";
+
+const UPDATE_URL = "http://localhost:3000/api/v1/updateshopbyid";
+
+
 const BusinessDashboard = () => {
-  const [activeTab, setActiveTab] = useState("dashboard");
-  const [theme, setTheme] = useState("light");
+  const [activeTab, setActiveTab] = useState("your-shop");
+  const [theme, setTheme] = useState("dark");
   const navigate = useNavigate();
 
   const [businessData, setBusinessData] = useState({
-    _id: "", // Add business ID for updates
     name: "",
     location: "",
+    shopemail: "",
     category: "",
-    logo: "", // Business logo URL
-    coverImage: "", // Cover image URL
     services: [
-      { serviceName: "", serviceDuration: "", servicePrice: "" }
-    ],
-    timeSlots: [
-      { date: "", status: "free", startTime: "", endTime: "" }
+      {
+        serviceName: "",
+        serviceDuration: "",
+        servicePrice: "",
+        date: "",
+        startTime: "",
+        endTime: "",
+      },
     ],
   });
 
-  const [stats, setStats] = useState({
-    services: 0,
-    slots: 0,
-    bookings: 0,
-  });
-
-  const [bookings, setBookings] = useState([
-    {
-      id: 1,
-      customerName: "John Doe",
-      serviceName: "Haircut",
-      time: "10:30 AM, 16 Dec 2025",
-      status: "pending",
-    },
-  ]);
-
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalBooking, setModalBooking] = useState(null);
-  const [rescheduleDate, setRescheduleDate] = useState("");
-  const [rescheduleStart, setRescheduleStart] = useState("");
-  const [rescheduleEnd, setRescheduleEnd] = useState("");
 
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [shopData, setShopData] = useState(null);
+  const [shopLoading, setShopLoading] = useState(true);
+  const [isEditMode, setIsEditMode] = useState(false);
+
+
+  const [bookings, setBookings] = useState([]);
+  const [bookingLoading, setBookingLoading] = useState(false);
+
+
+  const getUserId = () => {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not logged in");
+    return user.uid;
+  };
+
+
+
+  const getUserDetails = async () => {
+    const uid = getUserId();
+    const docRef = doc(db, "users", uid);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+      throw new Error("User data not found");
+    }
+
+    return docSnap.data();
+  };
+
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        setBookingLoading(true);
+        const userId = getUserId();
+
+        const res = await axios.get(
+          `http://localhost:5000/api/v1/bookings/business/${userId}`
+        );
+
+        setBookings(res.data.data || []);
+      } catch (error) {
+        console.error("Failed to fetch bookings", error);
+      } finally {
+        setBookingLoading(false);
+      }
+    };
+
+    fetchBookings();
+  }, []);
+
+
+
+
 
   useEffect(() => {
     document.body.setAttribute("data-theme", theme);
   }, [theme]);
 
-  // Auto-load business data when editprofile tab is selected
   useEffect(() => {
-    const fetchBusinessData = async () => {
-      if (activeTab === "editprofile" && !businessData._id) {
-        try {
-          // In a real app, this ID would come from authentication
-          // For demo purposes, using a sample ID
-          const sampleBusinessId = "693ba36c4c367a85dc413c0a";
-          const response = await axios.get(`http://localhost:5000/api/v1/getshopbyid/${sampleBusinessId}`);
+    const fetchYourShop = async () => {
+      if (activeTab !== "your-shop") return;
 
-          if (response.data && response.data.data) {
-            const business = response.data.data;
-            setBusinessData({
-              _id: business._id,
-              name: business.name || "",
-              location: business.location || "",
-              category: "", // This would need to be derived from masterCategory
-              logo: business.logo || "",
-              coverImage: business.coverImage || "",
-              services: business.services ? business.services.map(s => ({
-                serviceName: s.serviceName || "",
-                serviceDuration: s.duration || "",
-                servicePrice: s.price || "",
-              })) : [{ serviceName: "", serviceDuration: "", servicePrice: "" }],
-              timeSlots: business.timeSlots ? business.timeSlots.map(t => ({
-                date: t.date || "",
-                status: t.status || "free",
-                startTime: t.startTime || "",
-                endTime: t.endTime || "",
-              })) : [{ date: "", status: "free", startTime: "", endTime: "" }],
-            });
-          }
-        } catch (error) {
-          console.error("Error fetching business data:", error);
-          setMessage("⚠️ Could not load business data. Please enter details manually.");
+      const user = auth.currentUser;
+      if (!user) return;
+
+      try {
+        setShopLoading(true);
+
+        const response = await axios.get(`${BASE_URL}/${user.uid}`);
+        setShopData(response.data);
+      } catch (error) {
+        if (error.response?.status === 404) {
+          setShopData(null);
+        } else {
+          console.error("Error fetching shop:", error);
         }
+      } finally {
+        setShopLoading(false);
       }
     };
 
-    fetchBusinessData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    fetchYourShop();
   }, [activeTab]);
 
-  const handleChange = (e) => {
-    setBusinessData({ ...businessData, [e.target.name]: e.target.value });
-  };
+  console.log(shopData)
 
-  // Service handlers
-  const handleServiceChange = (index, field, value) => {
-    const updatedServices = [...businessData.services];
-    updatedServices[index] = { ...updatedServices[index], [field]: value };
-
-    // Auto-suggest duration and price when serviceName is selected
-    if (field === "serviceName") {
-      switch (value) {
-        case "Personal Fitness Training":
-          updatedServices[index].serviceDuration = 60;
-          updatedServices[index].servicePrice = 600;
-          break;
-        case "Yoga / Pilates":
-          updatedServices[index].serviceDuration = 45;
-          updatedServices[index].servicePrice = 400;
-          break;
-        case "Facial / Skincare":
-          updatedServices[index].serviceDuration = 50;
-          updatedServices[index].servicePrice = 500;
-          break;
-        case "Makeup & Styling":
-          updatedServices[index].serviceDuration = 90;
-          updatedServices[index].servicePrice = 1500;
-          break;
-        case "Hair Styling":
-          updatedServices[index].serviceDuration = 45;
-          updatedServices[index].servicePrice = 700;
-          break;
-        default:
-          break;
+  useEffect(() => {
+    const fetchBusinessData = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      try {
+        const docRef = doc(db, "businesses", user.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setBusinessData(docSnap.data());
+          console.log("✅ Business data loaded from Firestore");
+        }
+      } catch (error) {
+        console.error("⚠️ Error loading business data:", error);
       }
-    }
+    };
+    fetchBusinessData();
+  }, []);
 
-    setBusinessData({ ...businessData, services: updatedServices });
+  const handleChange = (e) =>
+    setBusinessData({ ...businessData, [e.target.name]: e.target.value });
+
+  const handleServiceChange = (index, field, value) => {
+    const updated = [...businessData.services];
+    updated[index][field] = value;
+    setBusinessData({ ...businessData, services: updated });
   };
 
-  const addService = () => {
-    setBusinessData({
-      ...businessData,
-      services: [...businessData.services, { serviceName: "", serviceDuration: "", servicePrice: "" }]
-    });
-  };
+  const addService = () =>
+    setBusinessData(prev => ({
+      ...prev,
+      services: [
+        ...prev.services,
+        {
+          serviceName: "",
+          serviceDuration: "",
+          servicePrice: "",
+          date: "",
+          startTime: "",
+          endTime: "",
+          modeOfService: "online",
+          providerGender: "any",
+          groupType: "1on1",
+          experienceYears: 0,
+          languages: [],
+          paymentType: "pay_confirm",
+        },
+      ],
+    }));
 
-  // Time slot handlers
-  const handleSlotChange = (index, field, value) => {
-    const updatedSlots = [...businessData.timeSlots];
-    updatedSlots[index] = { ...updatedSlots[index], [field]: value };
-    setBusinessData({ ...businessData, timeSlots: updatedSlots });
-  };
 
-  const addTimeSlot = () => {
-    setBusinessData({
-      ...businessData,
-      timeSlots: [...businessData.timeSlots, { date: "", status: "free", startTime: "", endTime: "" }]
-    });
-  };
-
-  // Remove specific service by index
-  const removeService = (index) => {
-    const updatedServices = businessData.services.filter((_, i) => i !== index);
-    setBusinessData({ ...businessData, services: updatedServices });
-  };
-
-  // Remove specific time slot by index
-  const removeTimeSlot = (index) => {
-    const updatedSlots = businessData.timeSlots.filter((_, i) => i !== index);
-    setBusinessData({ ...businessData, timeSlots: updatedSlots });
-  };
-
-  // Confirm booking handler
-  const handleConfirmBooking = async (bookingId) => {
-    try {
-      // Optionally call backend to confirm booking
-      // await axios.put(`http://localhost:5000/api/v1/bookings/${bookingId}/confirm`);
-
-      const updated = bookings.map((b) =>
-        b.id === bookingId ? { ...b, status: "confirmed" } : b
-      );
-
-      setBookings(updated);
-      setMessage("✅ Booking confirmed successfully!");
-    } catch (error) {
-      console.error("Error confirming booking:", error);
-      setMessage("⚠️ Failed to confirm booking. Try again.");
-    }
-  };
-
-  // Reject booking handler
-  const handleRejectBooking = async (bookingId) => {
-    try {
-      // Optionally call backend to reject booking
-      // await axios.put(`http://localhost:5000/api/v1/bookings/${bookingId}/reject`);
-
-      const updated = bookings.map((b) =>
-        b.id === bookingId ? { ...b, status: "rejected" } : b
-      );
-
-      setBookings(updated);
-      setMessage("⚠️ Booking rejected");
-    } catch (error) {
-      console.error("Error rejecting booking:", error);
-      setMessage("⚠️ Failed to reject booking. Try again.");
-    }
-  };
-
-  const openRescheduleModal = (booking) => {
-    setModalBooking(booking);
-    // try to parse time into fields if needed; leave simple defaults
-    setRescheduleDate("");
-    setRescheduleStart("");
-    setRescheduleEnd("");
-    setModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setModalOpen(false);
-    setModalBooking(null);
-  };
-
-  const handleRescheduleSubmit = async () => {
-    if (!modalBooking) return;
-    try {
-      // Optionally call backend to update booking
-      // await axios.put(`http://localhost:5000/api/v1/bookings/${modalBooking.id}/reschedule`, { date: rescheduleDate, startTime: rescheduleStart, endTime: rescheduleEnd });
-
-      const updated = bookings.map((b) =>
-        b.id === modalBooking.id
-          ? { ...b, time: `${rescheduleStart} - ${rescheduleEnd} on ${rescheduleDate}`, status: "pending" }
-          : b
-      );
-
-      setBookings(updated);
-      setMessage("✅ Booking rescheduled");
-      closeModal();
-    } catch (error) {
-      console.error("Error rescheduling booking:", error);
-      setMessage("⚠️ Failed to reschedule. Try again.");
-    }
-  };
 
   const handleSaveBusiness = async () => {
-    const { name, location, category, services, timeSlots } = businessData;
-
-    if (!name || !location || !category) {
-      setMessage("⚠️ Please fill business name, location, and select a category.");
-      return;
-    }
-
-    // basic validation for first service
-    if (!services || services.length === 0 || services.some(s => !s.serviceName || !s.serviceDuration || !s.servicePrice)) {
-      setMessage("⚠️ Please add at least one service with name, duration, and price.");
-      return;
-    }
-
     try {
       setLoading(true);
-      setMessage("");
 
-      const payload = {
-        name,
-        location,
-        masterCategory: getCategoryEnumValue(category),
-        services: services.map(s => ({
-          serviceName: s.serviceName,
-          duration: Number(s.serviceDuration),
-          price: Number(s.servicePrice),
-        })),
-        timeSlots: timeSlots.map(t => ({
-          date: t.date,
-          status: t.status,
-          startTime: t.startTime,
-          endTime: t.endTime,
-        })),
-      };
-
-      const response = await axios.post(API_URL, payload);
-
-      console.log("Create shop response:", response.data);
-
-      if (response.status === 200 || response.status === 201) {
-        setMessage("✅ Business saved successfully!");
-      } else {
-        setMessage("⚠️ Backend not responding. Saved locally for demo!");
+      const user = auth.currentUser;
+      if (!user) {
+        setMessage("⚠️ User not logged in");
+        return;
       }
-
-      setStats((prev) => ({
-        services: prev.services + (services ? services.length : 0),
-        slots: prev.slots + (timeSlots ? timeSlots.length : 0),
-        bookings: prev.bookings,
-      }));
-
-      // reset form to initial shape
-      setBusinessData({
-        name: "",
-        location: "",
-        category: "",
-        services: [ { serviceName: "", serviceDuration: "", servicePrice: "" } ],
-        timeSlots: [ { date: "", status: "free", startTime: "", endTime: "" } ],
-      });
-
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || "Unknown error";
-      const errorDetails = error.response?.data?.error || error.response?.data || "";
-      console.error("Error creating shop:", { errorMessage, errorDetails, fullError: error });
-      setMessage(
-        "⚠️ " + (typeof errorMessage === 'string' ? errorMessage : "Failed to save business. Check console for details.")
-      );
-
-      // keep existing stats behavior but count items if available
-      setStats((prev) => ({
-        services: prev.services + (businessData.services ? businessData.services.length : 0),
-        slots: prev.slots + (businessData.timeSlots ? businessData.timeSlots.length : 0),
-        bookings: prev.bookings,
-      }));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleImageUpload = async (type) => {
-    try {
-      const fileInput = document.createElement("input");
-      fileInput.type = "file";
-      fileInput.accept = "image/*";
-      fileInput.click();
-
-      fileInput.onchange = async () => {
-        const file = fileInput.files[0];
-        if (!file) return;
-
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-
-        setMessage("⏳ Uploading image...");
-
-        const response = await fetch(CLOUDINARY_UPLOAD_URL, {
-          method: "POST",
-          body: formData,
-        });
-        const data = await response.json();
-
-        if (data.secure_url) {
-          setBusinessData((prev) => ({
-            ...prev,
-            [type === "logo" ? "logo" : "coverImage"]: data.secure_url,
-          }));
-          setMessage("✅ Image uploaded successfully!");
-        } else {
-          setMessage("⚠️ Image upload failed, please try again.");
-        }
-      };
-    } catch (err) {
-      console.error("Upload error:", err);
-      setMessage("⚠️ Upload error: " + err.message);
-    }
-  };
-
-  const handleUpdateBusiness = async () => {
-    if (!businessData._id) {
-      setMessage("⚠️ Business ID missing. Please load your business profile first.");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setMessage("");
 
       const payload = {
         name: businessData.name,
         location: businessData.location,
-        logo: businessData.logo,
-        coverImage: businessData.coverImage,
+        shopemail: businessData.shopemail,
+        masterCategory: businessData.category,
+        userId: user.uid,
         services: businessData.services.map(s => ({
           serviceName: s.serviceName,
-          duration: Number(s.serviceDuration),
-          price: Number(s.servicePrice),
-        })),
-        timeSlots: businessData.timeSlots.map(t => ({
-          date: t.date,
-          status: t.status,
-          startTime: t.startTime,
-          endTime: t.endTime,
+          duration: Number(s.serviceDuration) || 30,
+          price: Number(s.servicePrice) || 0,
+          date: s.date,
+          startTime: s.startTime,
+          endTime: s.endTime,
+          modeOfService: s.modeOfService,
+          providerGender: s.providerGender || "any",
+          groupType: s.groupType || "1on1",
+          experienceYears: Number(s.experienceYears) || 0,
+          languages: Array.isArray(s.languages) ? s.languages : ["tamil"],
+          paymentType: s.paymentType || "pay_confirm",
         })),
       };
 
-      const response = await axios.put(
-        `http://localhost:5000/api/v1/updateshopbyid/${businessData._id}`,
-        payload
-      );
+      await axios.post(API_URL, payload);
 
-      if (response.status === 200) {
-        setMessage("✅ Business updated successfully!");
-      } else {
-        setMessage("⚠️ Update failed, please try again.");
-      }
-    } catch (error) {
-      console.error("Update error:", error.response?.data || error.message);
-      setMessage(
-        "⚠️ " + (error.response?.data?.message || "Server error while updating.")
-      );
+      setMessage("✅ Business saved successfully");
+      setActiveTab("your-shop");
+    } catch (err) {
+      console.error(err);
+      setMessage("❌ Failed to save business");
     } finally {
       setLoading(false);
     }
   };
 
-  const toggleTheme = () => setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  const handleUpdateBusiness = async () => {
+    try {
+      setLoading(true);
+      const user = auth.currentUser;
+      if (!user || !shopData?._id) {
+        setMessage("⚠️ Unable to update shop");
+        return;
+      }
 
+      const payload = {
+        name: businessData.name,
+        location: businessData.location,
+        shopemail: businessData.shopemail,
+        category: businessData.category,
+        services: businessData.services,
+      };
+
+      await axios.put(
+        `http://localhost:5000/api/v1/updateshopbyid/${shopData._id}`,
+        payload
+      );
+
+
+      setMessage("✅ Business updated successfully!");
+      setIsEditMode(false);
+      setActiveTab("your-shop");
+    } catch (error) {
+      console.error(error);
+      setMessage("⚠️ Failed to update business");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  const toggleTheme = () =>
+    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+
+  // ✅ Render Create Shop Tab
   const renderDashboard = () => (
     <section className="content animate-fade">
-      {/* Hero Illustration */}
       <div className="hero-section">
-        <img
-          src="https://undraw.co/api/illustrations/business-dashboard.svg"
-          alt="Business Dashboard"
+        {/* <img
+          src="https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=1500&q=80"
+          alt="Business Team"
           className="hero-img"
-        />
-        <h2>Welcome to Your Business Dashboard</h2>
+        /> */}
+        <h2>
+          Welcome back,{" "}
+          <span style={{ color: "#6ec1e4" }}>
+            {businessData.name || "Business Owner"}
+          </span>
+          !
+        </h2>
         <p>Organize, manage, and visualize your business effortlessly.</p>
       </div>
 
       <div className="card glass">
         <h3>Business Setup</h3>
-        <p className="placeholder-text">Create or update your business profile</p>
-
-        <div className="actions-left" style={{ marginBottom: '20px' }}>
-          <button
-            className="btn-primary glow"
-            onClick={() => setActiveTab("editprofile")}
-          >
-            ✏️ Edit Business Profile
-          </button>
-        </div>
+        <p>Create or update your business profile</p>
 
         <div className="grid-2 relaxed-grid">
           <div className="field">
@@ -526,6 +406,17 @@ const BusinessDashboard = () => {
               onChange={handleChange}
             />
           </div>
+
+          <div className="field">
+            <label>email</label>
+            <input
+              name="shopemail"
+              type="text"
+              placeholder="Enter email"
+              value={businessData.shopemail}
+              onChange={handleChange}
+            />
+          </div>
         </div>
 
         <h3>Choose Category</h3>
@@ -533,174 +424,90 @@ const BusinessDashboard = () => {
           <label>Select Main Category</label>
           <select
             name="category"
-            value={businessData.category || ""}
-            onChange={(e) => {
-              const newCategory = e.target.value;
-              setBusinessData({
-                ...businessData,
-                category: newCategory,
-                services: businessData.services.map(service => ({ ...service, serviceName: "" }))
-              });
-            }}
+            value={businessData.category}
+            onChange={handleChange}
           >
             <option value="">-- Select a Category --</option>
-            {Object.keys(CATEGORY_SERVICES).map((cat) => (
-              <option key={cat} value={cat}>{cat}</option>
+            {CATEGORIES.map((cat) => (
+              <option key={cat.value} value={cat.label}>
+                {cat.icon} {cat.label}
+              </option>
             ))}
           </select>
         </div>
 
         <h3>Service Details</h3>
-
-        {businessData.services.map((service, index) => (
-          <div key={index} className="service-block glass-box">
+        {businessData.services.map((service, i) => (
+          <div key={i} className="service-block glass-box">
             <div className="grid-3 relaxed-grid">
+
+              {/* SERVICE NAME */}
               <div className="field">
                 <label>Service Name</label>
                 <CreatableSelect
                   isClearable
                   placeholder="Select or type a service"
-                  options={(CATEGORY_SERVICES[businessData.category] || []).map((srv) => ({
-                    label: srv,
-                    value: srv,
-                  }))}
+                  options={
+                    (CATEGORY_SERVICES[businessData.category] || []).flatMap(cat =>
+                      cat.services.map(srv => ({ label: srv, value: srv }))
+                    )
+                  }
                   value={
-                    businessData.services[index]?.serviceName
-                      ? { label: businessData.services[index].serviceName, value: businessData.services[index].serviceName }
+                    service.serviceName
+                      ? { label: service.serviceName, value: service.serviceName }
                       : null
                   }
-                  onChange={(option) =>
-                    handleServiceChange(index, "serviceName", option?.value || "")
+                  onChange={(opt) =>
+                    handleServiceChange(i, "serviceName", opt?.value || "")
                   }
-                  styles={theme === "dark" ? {
-                    control: (base) => ({
-                      ...base,
-                      backgroundColor: "rgba(255, 255, 255, 0.05)",
-                      border: "1px solid rgba(255, 255, 255, 0.2)",
-                      borderRadius: "8px",
-                      color: "#fff",
-                      boxShadow: "none",
-                      minHeight: "42px",
-                    }),
-                    singleValue: (base) => ({ ...base, color: "#fff" }),
-                    input: (base) => ({ ...base, color: "#fff" }),
-                    menu: (base) => ({
-                      ...base,
-                      backgroundColor: "rgba(20, 20, 40, 0.95)",
-                      borderRadius: "8px",
-                      color: "#fff",
-                      zIndex: 10,
-                    }),
-                    option: (base, state) => ({
-                      ...base,
-                      backgroundColor: state.isFocused ? "#a855f7" : "transparent",
-                      color: state.isFocused ? "#fff" : "#ccc",
-                      cursor: "pointer",
-                    }),
-                    placeholder: (base) => ({ ...base, color: "#aaa" }),
-                  } : {
-                    control: (base) => ({
-                      ...base,
-                      backgroundColor: "#fff",
-                      border: "1px solid #ccc",
-                      borderRadius: "8px",
-                      color: "#333",
-                      boxShadow: "none",
-                      minHeight: "42px",
-                    }),
-                    singleValue: (base) => ({ ...base, color: "#333" }),
-                    input: (base) => ({ ...base, color: "#333" }),
-                    menu: (base) => ({
-                      ...base,
-                      backgroundColor: "#fff",
-                      border: "1px solid #ccc",
-                      borderRadius: "8px",
-                      color: "#333",
-                      zIndex: 10,
-                    }),
-                    option: (base, state) => ({
-                      ...base,
-                      backgroundColor: state.isFocused ? "#e0e0e0" : "transparent",
-                      color: state.isFocused ? "#333" : "#666",
-                      cursor: "pointer",
-                    }),
-                    placeholder: (base) => ({ ...base, color: "#999" }),
-                  }}
                 />
               </div>
+
+              {/* DURATION */}
               <div className="field">
                 <label>Duration (min)</label>
                 <input
                   type="number"
-                  placeholder="30"
                   value={service.serviceDuration}
-                  onChange={(e) => handleServiceChange(index, "serviceDuration", e.target.value)}
+                  onChange={(e) =>
+                    handleServiceChange(i, "serviceDuration", e.target.value)
+                  }
                 />
               </div>
+
+              {/* PRICE */}
               <div className="field">
                 <label>Price (₹)</label>
                 <input
                   type="number"
-                  placeholder="500"
                   value={service.servicePrice}
-                  onChange={(e) => handleServiceChange(index, "servicePrice", e.target.value)}
+                  onChange={(e) =>
+                    handleServiceChange(i, "servicePrice", e.target.value)
+                  }
                 />
               </div>
-            </div>
 
-            {businessData.services.length > 1 && (
-              <button
-                type="button"
-                className="btn-remove small"
-                onClick={() => removeService(index)}
-              >
-                ❌ Remove
-              </button>
-            )}
-          </div>
-        ))}
-
-        <div className="actions-left">
-          <button
-            type="button"
-            className="btn-secondary small"
-            onClick={addService}
-          >
-            ➕ Add Another Service
-          </button>
-        </div>
-
-        <h3>Time Slots</h3>
-
-        {businessData.timeSlots.map((slot, index) => (
-          <div key={index} className="time-slot-block glass-box">
-            <div className="grid-4 relaxed-grid">
+              {/* DATE */}
               <div className="field">
                 <label>Date</label>
                 <input
                   type="date"
-                  value={slot.date}
-                  onChange={(e) => handleSlotChange(index, "date", e.target.value)}
+                  value={service.date}
+                  onChange={(e) =>
+                    handleServiceChange(i, "date", e.target.value)
+                  }
                 />
               </div>
 
-              <div className="field">
-                <label>Status</label>
-                <select
-                  value={slot.status}
-                  onChange={(e) => handleSlotChange(index, "status", e.target.value)}
-                >
-                  <option value="free">Free</option>
-                  <option value="booked">Booked</option>
-                </select>
-              </div>
-
+              {/* TIME */}
               <div className="field">
                 <label>Start Time</label>
                 <input
                   type="time"
-                  value={slot.startTime}
-                  onChange={(e) => handleSlotChange(index, "startTime", e.target.value)}
+                  value={service.startTime}
+                  onChange={(e) =>
+                    handleServiceChange(i, "startTime", e.target.value)
+                  }
                 />
               </div>
 
@@ -708,446 +515,343 @@ const BusinessDashboard = () => {
                 <label>End Time</label>
                 <input
                   type="time"
-                  value={slot.endTime}
-                  onChange={(e) => handleSlotChange(index, "endTime", e.target.value)}
+                  value={service.endTime}
+                  onChange={(e) =>
+                    handleServiceChange(i, "endTime", e.target.value)
+                  }
                 />
               </div>
-            </div>
 
-            {businessData.timeSlots.length > 1 && (
-              <button
-                type="button"
-                className="btn-remove small"
-                onClick={() => removeTimeSlot(index)}
-              >
-                ❌ Remove
-              </button>
-            )}
+              {/* MODE OF SERVICE */}
+              <div className="field">
+                <label>Mode of Service</label>
+                <select
+                  value={service.modeOfService}
+                  onChange={(e) =>
+                    handleServiceChange(i, "modeOfService", e.target.value)
+                  }
+                >
+                  <option value="online">Online</option>
+                  <option value="home">Home Service</option>
+                  <option value="studio">Studio / Salon</option>
+                </select>
+              </div>
+
+              {/* PROVIDER GENDER */}
+              <div className="field">
+                <label>Provider Gender</label>
+                <select
+                  value={service.providerGender}
+                  onChange={(e) =>
+                    handleServiceChange(i, "providerGender", e.target.value)
+                  }
+                >
+                  <option value="any">Any</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
+              </div>
+
+              {/* GROUP TYPE */}
+              <div className="field">
+                <label>Group Type</label>
+                <select
+                  value={service.groupType}
+                  onChange={(e) =>
+                    handleServiceChange(i, "groupType", e.target.value)
+                  }
+                >
+                  <option value="1on1">1-on-1</option>
+                  <option value="group">Group Class</option>
+                  <option value="workshop">Workshop</option>
+                </select>
+              </div>
+
+              {/* EXPERIENCE */}
+              <div className="field">
+                <label>Experience (Years)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={service.experienceYears}
+                  onChange={(e) =>
+                    handleServiceChange(i, "experienceYears", e.target.value)
+                  }
+                />
+              </div>
+
+              {/* LANGUAGES */}
+              <div className="field">
+                <label>Languages</label>
+                <CreatableSelect
+                  isMulti
+                  placeholder="EN, HI, TA..."
+                  value={Array.isArray(service.languages)
+                    ? service.languages.map(l => ({ label: l, value: l }))
+                    : []
+                  }
+
+                  onChange={(opts) =>
+                    handleServiceChange(
+                      i,
+                      "languages",
+                      opts.map(o => o.value)
+                    )
+                  }
+                />
+              </div>
+
+              {/* PAYMENT TYPE */}
+              <div className="field">
+                <label>Payment Type</label>
+                <select
+                  value={service.paymentType}
+                  onChange={(e) =>
+                    handleServiceChange(i, "paymentType", e.target.value)
+                  }
+                >
+                  <option value="pay_later">Pay Later</option>
+                  <option value="pay_confirm">Pay to Confirm</option>
+                  <option value="deposit">Online Deposit</option>
+                </select>
+              </div>
+            </div>
           </div>
         ))}
 
-        <div className="actions-left">
-          <button
-            type="button"
-            className="btn-secondary small"
-            onClick={addTimeSlot}
-          >
-            ➕ Add Another Time Slot
-          </button>
-        </div>
 
-        {message && (
-          <p className={`status-msg ${message.includes("✅") ? "success" : "error"}`}>
-            {message}
-          </p>
-        )}
+        <button className="btn-secondary small" onClick={addService}>
+          ➕ Add Another Service
+        </button>
 
-        
+
+
+        {message && <p className="status-msg">{message}</p>}
 
         <div className="actions-right">
           <button
             className="btn-primary glow"
-            type="button"
-            onClick={handleSaveBusiness}
+            onClick={isEditMode ? handleUpdateBusiness : handleSaveBusiness}
             disabled={loading}
           >
-            {loading ? "Saving..." : "Save Business"}
+            {loading
+              ? "Saving..."
+              : isEditMode
+                ? "Update Business"
+                : "Save Business"}
           </button>
+
         </div>
       </div>
     </section>
   );
 
+
   const renderBookings = () => (
-    <section className="content animate-fade">
-      <div className="card glass">
-        <h3>Bookings</h3>
-        <p className="placeholder-text">Your customer bookings appear here.</p>
+    <div className="cd-bookings-page">
+      <h1 className="cd-header-title">My Bookings</h1>
 
-        {bookings.length === 0 ? (
-          <p>No bookings yet.</p>
-        ) : (
-          bookings.map((booking) => (
-            <div
-              className={`booking-card ${booking.status === "confirmed" ? "confirmed" : ""}`}
-              key={booking.id}
-            >
-              <div>
-                <h4>{booking.customerName}</h4>
-                <p>
-                  {booking.serviceName} - {booking.time}
-                </p>
-                {booking.status === "confirmed" && (
-                  <span className="status-badge">✅ Confirmed</span>
-                )}
-                {booking.status === "rejected" && (
-                  <span className="status-badge" style={{ background: '#e74c3c' }}>❌ Rejected</span>
-                )}
+      {bookingLoading ? (
+        <p className="cd-muted">Loading bookings...</p>
+      ) : bookings.length === 0 ? (
+        <p className="cd-muted">No bookings yet.</p>
+      ) : (
+        <div className="cd-booking-list">
+          {bookings.map((b) => (
+            <div key={b._id} className="cd-booking-card">
+              <div className="cd-booking-title">{b.shopName}</div>
+
+              <div className="cd-booking-meta">
+                <span>⏰ {b.time}</span>
+                <span>₹{b.price}</span>
               </div>
 
-              <div>
-                {booking.status === "pending" && (
-                  <>
-                    <button
-                      className="btn-primary small"
-                      onClick={() => handleConfirmBooking(booking.id)}
-                    >
-                      Confirm
-                    </button>
-                    <button
-                      className="btn-outline small"
-                      style={{ marginLeft: '10px' }}
-                      onClick={() => handleRejectBooking(booking.id)}
-                    >
-                      Reject
-                    </button>
-                    <button
-                      className="btn-secondary small"
-                      style={{ marginLeft: '10px' }}
-                      onClick={() => openRescheduleModal(booking)}
-                    >
-                      Reschedule
-                    </button>
-                  </>
-                )}
+              {/* 👤 Customer Info */}
+              {b.customer && (
+                <div className="cd-customer-info">
+                  <p><strong>Customer:</strong> {b.customer.fullName}</p>
+                  <p><strong>Email:</strong> {b.customer.email}</p>
+                  <p><strong>Phone:</strong> {b.customer.phone}</p>
+                </div>
+              )}
+
+              <div className="cd-booking-status">
+                Status: {b.status}
               </div>
             </div>
-          ))
-        )}
+          ))}
 
-        {/* Reschedule Modal */}
-        {modalOpen && modalBooking && (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h4>Reschedule Booking</h4>
-                <button onClick={closeModal} className="btn-ghost">✕</button>
-              </div>
-              <div className="modal-body">
-                <p><strong>{modalBooking.customerName}</strong> — {modalBooking.serviceName}</p>
-                <label>Date</label>
-                <input type="date" value={rescheduleDate} onChange={(e) => setRescheduleDate(e.target.value)} />
-                <label>Start Time</label>
-                <input type="time" value={rescheduleStart} onChange={(e) => setRescheduleStart(e.target.value)} />
-                <label>End Time</label>
-                <input type="time" value={rescheduleEnd} onChange={(e) => setRescheduleEnd(e.target.value)} />
-              </div>
-              <div className="modal-actions">
-                <button className="btn-secondary small" onClick={handleRescheduleSubmit}>Save</button>
-                <button className="btn-outline small" onClick={closeModal} style={{ marginLeft: '8px' }}>Cancel</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {message && (
-          <p className={`status-msg ${message.includes("✅") ? "success" : "error"}`}>
-            {message}
-          </p>
-        )}
-      </div>
-    </section>
+        </div>
+      )}
+    </div>
   );
 
+
+
+  // ✅ Render Settings Tab
   const renderSettings = () => (
     <section className="content animate-fade">
       <div className="card glass">
         <h3>Settings</h3>
-        <p className="placeholder-text">Manage your business effortlessly</p>
-
-        <div className="grid-2 relaxed-grid">
-          <div className="field">
-            <label>Business Email</label>
-            <input type="email" placeholder="name@business.com" />
-          </div>
-          <div className="field">
-            <label>Contact Phone</label>
-            <input type="tel" placeholder="+91 98765 43210" />
-          </div>
-          <div className="field">
-            <label>Time Zone</label>
-            <select>
-              <option>Asia/Kolkata (IST)</option>
-              <option>UTC</option>
-              <option>Europe/London</option>
-            </select>
-          </div>
-          <div className="field">
-            <label>Notification Email</label>
-            <input type="email" placeholder="alerts@business.com" />
-          </div>
-        </div>
-
-        <div className="actions-right">
-          <button className="btn-primary glow" type="button">
-            Save Settings
-          </button>
-        </div>
+        <p>Manage your preferences</p>
       </div>
     </section>
   );
 
-  const renderEditProfile = () => (
-    <section className="content animate-fade">
-      <div className="card glass">
-        <h3>✏️ Edit Business Profile</h3>
-        <p className="placeholder-text">Update your business information, logo, and banner.</p>
+  // ✅ Render Your Shop Tab
+  const renderyourshop = () => {
+    if (shopLoading) {
+      return (
+        <div className="shop-container glass">
+          <h2>Loading your shop...</h2>
+        </div>
+      );
+    }
 
-        {/* Cover Image Preview */}
-        <div className="cover-preview">
-          {businessData.coverImage ? (
-            <img src={businessData.coverImage} alt="Cover" className="cover-img" />
-          ) : (
-            <div className="cover-placeholder">No cover uploaded</div>
-          )}
-          <button
-            className="btn-primary glow small"
-            onClick={() => handleImageUpload("cover")}
-          >
-            Upload Cover
-          </button>
+    if (!shopData) {
+      return (
+        <div className="shop-container glass">
+          <h2>No shop found!</h2>
+          <button onClick={() => setActiveTab("create shop")}>Create Shop</button>
+          <p>You haven’t set up your business yet.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="shop-container glass">
+        <h1 className="shop-title">
+          Welcome, <span>{shopData.name}</span>!
+        </h1>
+
+        <div className="shop-info">
+          <p><strong>📍 Location:</strong> {shopData.location}</p>
+          <p><strong>🏷️ Category:</strong> {shopData.category}</p>
+          <p><strong>📧 Email:</strong> {shopData.shopemail}</p>
         </div>
 
-        {/* Logo Preview */}
-        <div className="logo-preview">
-          {businessData.logo ? (
-            <img src={businessData.logo} alt="Logo" className="logo-img" />
-          ) : (
-            <div className="logo-placeholder">No logo uploaded</div>
-          )}
-          <button
-            className="btn-primary glow small"
-            onClick={() => handleImageUpload("logo")}
-          >
-            Upload Logo
-          </button>
-        </div>
+        <div className="shop-section">
+          <h3>🛠️ Services Offered</h3>
+        
 
-        <div className="grid-2 relaxed-grid">
-          <div className="field">
-            <label>Business Name</label>
-            <input
-              name="name"
-              type="text"
-              placeholder="Enter business name"
-              value={businessData.name}
-              onChange={handleChange}
-            />
-          </div>
-          <div className="field">
-            <label>Location</label>
-            <input
-              name="location"
-              type="text"
-              placeholder="Enter your location"
-              value={businessData.location}
-              onChange={handleChange}
-            />
-          </div>
-        </div>
-
-        <h3>Services</h3>
-        {businessData.services.map((service, index) => (
-          <div key={index} className="service-block glass-box">
-            <div className="grid-3 relaxed-grid">
-              <div className="field">
-                <label>Service Name</label>
-                <input
-                  type="text"
-                  placeholder="Service name"
-                  value={service.serviceName}
-                  onChange={(e) =>
-                    handleServiceChange(index, "serviceName", e.target.value)
-                  }
-                />
-              </div>
-              <div className="field">
-                <label>Duration (min)</label>
-                <input
-                  type="number"
-                  placeholder="30"
-                  value={service.serviceDuration}
-                  onChange={(e) =>
-                    handleServiceChange(index, "serviceDuration", e.target.value)
-                  }
-                />
-              </div>
-              <div className="field">
-                <label>Price (₹)</label>
-                <input
-                  type="number"
-                  placeholder="500"
-                  value={service.servicePrice}
-                  onChange={(e) =>
-                    handleServiceChange(index, "servicePrice", e.target.value)
-                  }
-                />
-              </div>
-            </div>
-
-            {businessData.services.length > 1 && (
-              <button
-                type="button"
-                className="btn-remove small"
-                onClick={() => removeService(index)}
-              >
-                ❌ Remove Service
-              </button>
+            {shopData?.services?.length > 0 ? (
+              <ul>
+                {shopData.services.map((srv, idx) => (
+                  <li key={idx} className="service-item">
+                    <strong>{srv.serviceName}</strong>
+                    <br />
+                    ⏱ Duration: {srv.duration} mins
+                    <br />
+                    💰 Price: ₹{srv.price}
+                    <br />
+                    📅 {srv.date}
+                    <br />
+                    ⏰ {srv.startTime} - {srv.endTime}
+                    <br />
+                    🌐 Mode: {srv.modeOfService}
+                    <br />
+                    👤 Provider: {srv.providerGender}
+                    <br />
+                    👥 Type: {srv.groupType}
+                    <br />
+                    🧠 Experience: {srv.experienceYears} years
+                    <br />
+                    🗣 Languages: {srv.languages?.join(", ")}
+                    <br />
+                    💳 Payment: {srv.paymentType}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No services added yet.</p>
             )}
-          </div>
-        ))}
+       
 
-        <div className="actions-left">
-          <button
-            type="button"
-            className="btn-secondary small"
-            onClick={addService}
-          >
-            ➕ Add Another Service
-          </button>
         </div>
 
-        <h3>Time Slots</h3>
-        {businessData.timeSlots.map((slot, index) => (
-          <div key={index} className="time-slot-block glass-box">
-            <div className="grid-4 relaxed-grid">
-              <div className="field">
-                <label>Date</label>
-                <input
-                  type="date"
-                  value={slot.date}
-                  onChange={(e) => handleSlotChange(index, "date", e.target.value)}
-                />
-              </div>
-
-              <div className="field">
-                <label>Status</label>
-                <select
-                  value={slot.status}
-                  onChange={(e) => handleSlotChange(index, "status", e.target.value)}
-                >
-                  <option value="free">Free</option>
-                  <option value="booked">Booked</option>
-                </select>
-              </div>
-
-              <div className="field">
-                <label>Start Time</label>
-                <input
-                  type="time"
-                  value={slot.startTime}
-                  onChange={(e) => handleSlotChange(index, "startTime", e.target.value)}
-                />
-              </div>
-
-              <div className="field">
-                <label>End Time</label>
-                <input
-                  type="time"
-                  value={slot.endTime}
-                  onChange={(e) => handleSlotChange(index, "endTime", e.target.value)}
-                />
-              </div>
-            </div>
-
-            {businessData.timeSlots.length > 1 && (
-              <button
-                type="button"
-                className="btn-remove small"
-                onClick={() => removeTimeSlot(index)}
-              >
-                ❌ Remove Time Slot
-              </button>
-            )}
-          </div>
-        ))}
-
-        <div className="actions-left">
-          <button
-            type="button"
-            className="btn-secondary small"
-            onClick={addTimeSlot}
-          >
-            ➕ Add Another Time Slot
-          </button>
-        </div>
-
-        <div className="actions-right">
-          <button className="btn-primary glow" onClick={handleUpdateBusiness} disabled={loading}>
-            {loading ? "Updating..." : "💾 Save Changes"}
-          </button>
-        </div>
-
-        {message && (
-          <p className={`status-msg ${message.includes("✅") ? "success" : "error"}`}>
-            {message}
-          </p>
-        )}
+        <button
+          onClick={() => {
+            setBusinessData({
+              name: shopData.name,
+              location: shopData.location,
+              shopemail: shopData.shopemail,
+              category: shopData.category,
+              services: shopData.services,
+            });
+            setIsEditMode(true);
+            setActiveTab("edit-shop");
+          }}
+        >
+          ✏️ Edit Business
+        </button>
       </div>
-    </section>
-  );
+    );
+  };
+
 
   return (
     <div className="bd-app">
       {/* Sidebar */}
       <aside className="sidebar glass">
-        <div>
-          <div className="logo">
-            <img
-              src="/logo.jpg.png"
-              alt="BookieReserve Logo"
-              className="logo-image"
-            />
-            <div className="logo-text">
-              <h1>BookieReserve</h1>
-              <p>Business Dashboard</p>
-            </div>
+        <div className="logo">
+          <img src="/logo.jpg.png" alt="Logo" className="logo-image" />
+          <div className="logo-text">
+            <h1>BookieReserve</h1>
+            <p>Business Dashboard</p>
           </div>
-
-          <nav className="nav">
-            {["dashboard", "bookings", "settings", "editprofile"].map((tab) => (
-              <button
-                key={tab}
-                className={`nav-item ${activeTab === tab ? "active" : ""}`}
-                onClick={() => setActiveTab(tab)}
-              >
-                <span className="nav-icon">
-                  {tab === "dashboard"
-                    ? "📊"
-                    : tab === "bookings"
-                      ? "📅"
-                      : tab === "settings"
-                        ? "⚙️"
-                        : "✏️"}
-                </span>
-                <span>
-                  {tab === "editprofile" ? "Edit Profile" : tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </span>
-              </button>
-            ))}
-          </nav>
         </div>
+
+        <nav className="nav">
+          {["create shop", "bookings", "your-shop", "settings"].map((tab) => (
+            <button
+              key={tab}
+              className={`nav-item ${activeTab === tab ? "active" : ""}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              <span className="nav-icon">
+                {tab === "create shop"
+                  ? "📊"
+                  : tab === "bookings"
+                    ? "📅"
+                    : tab === "your-shop"
+                      ? "🏪"
+                      : "⚙️"}
+              </span>
+              <span>
+                {tab === "your-shop"
+                  ? "Your Shop"
+                  : tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </span>
+
+
+            </button>
+          ))}
+        </nav>
 
         <button className="bd-logout" onClick={() => navigate("/")}>
           ⏏ Logout
         </button>
       </aside>
 
-      {/* Main */}
+      {/* Main Section */}
       <main className="main">
         <header className="topbar glass">
           <div>
             <h2>
-              {activeTab === "dashboard"
-                ? "Dashboard"
+              {activeTab === "create shop"
+                ? "Create Shop"
                 : activeTab === "bookings"
-                  ? "Bookings"
+                  ? "bookings"
                   : activeTab === "settings"
                     ? "Settings"
-                    : "Edit Profile"}
+                    : activeTab === "Your Shop"
+                      ? "Settings"
+                      : "Your Shop"}
             </h2>
             <p>Manage your business effortlessly</p>
           </div>
+
+
 
           <div className="topbar-actions">
             <button onClick={toggleTheme} className="btn-ghost">
@@ -1156,35 +860,16 @@ const BusinessDashboard = () => {
           </div>
         </header>
 
-        {activeTab === "dashboard" && renderDashboard()}
+        {activeTab === "create shop" && renderDashboard()}
+        {activeTab === "edit-shop" && renderDashboard()}
+
         {activeTab === "bookings" && renderBookings()}
         {activeTab === "settings" && renderSettings()}
-        {activeTab === "editprofile" && renderEditProfile()}
+        {activeTab === "your-shop" && renderyourshop()}
 
-        {/* Right Panel */}
-        <aside className="right-panel glass animate-float">
-          <div className="card glass">
-            <h3>Quick Stats</h3>
-            <div className="stat-row">
-              <div className="stat">
-                <span>Services</span>
-                <strong>{stats.services}</strong>
-              </div>
-              <div className="stat">
-                <span>Time Slots</span>
-                <strong>{stats.slots}</strong>
-              </div>
-              <div className="stat">
-                <span>Bookings</span>
-                <strong>{stats.bookings}</strong>
-              </div>
-            </div>
-          </div>
-        </aside>
       </main>
     </div>
   );
 };
 
 export default BusinessDashboard;
-

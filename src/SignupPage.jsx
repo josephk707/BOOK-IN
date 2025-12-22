@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Eye, EyeOff, ShieldCheck } from "lucide-react";
+import {
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  sendEmailVerification,
+  GoogleAuthProvider,
+} from "firebase/auth";
+import { auth, db } from "./firebase";
+import { Eye, EyeOff } from "lucide-react";
 import "./SignupPage.css";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+
 
 const SignupPage = () => {
   const navigate = useNavigate();
@@ -30,49 +39,87 @@ const SignupPage = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
 
-    if (!formData.fullName || !formData.email || !formData.password) {
-      alert("Please fill all required fields");
-      return;
-    }
-    if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match");
-      return;
-    }
-    if (formData.password.length < 6) {
-      alert("Password must be at least 6 characters");
-      return;
-    }
-    if (!agreeTerms) {
-      alert("Please agree to Terms & Conditions");
-      return;
-    }
 
-    alert("Account created successfully!");
-    if (role === "business") navigate("/business-dashboard");
-    else navigate("/customer-dashboard");
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  if (!formData.fullName || !formData.email || !formData.password) {
+    alert("Please fill all required fields");
+    return;
+  }
+  if (formData.password !== formData.confirmPassword) {
+    alert("Passwords do not match");
+    return;
+  }
+  if (formData.password.length < 6) {
+    alert("Password must be at least 6 characters");
+    return;
+  }
+  if (!agreeTerms) {
+    alert("Please agree to Terms & Conditions");
+    return;
+  }
+
+  try {
+
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      formData.email,
+      formData.password
+    );
+
+    const user = userCredential.user;
+    
+    await setDoc(doc(db,"users",user.uid), {
+      uid: user.uid,
+      fullName: formData.fullName,
+      email: formData.email,
+      phone: formData.phone || "",
+      role: role||"", 
+      emailVerified: user.emailVerified,
+      createdAt: serverTimestamp(),
+    });
+
+    await sendEmailVerification(user);
+
+    alert("Account created! Please verify your email.");
+
+    navigate("/login");
+
+  } catch (error) {
+    alert("Signup failed: " + error.message);
+  }
+};
+
+  // ✅ Google Sign-in
+  const handleGoogleSignUp = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+
+      alert("Google Sign-in successful!");
+      if (role === "business") navigate("/business-dashboard");
+      else navigate("/customer-dashboard");
+    } catch (error) {
+      alert("Google Sign-in failed: " + error.message);
+    }
   };
 
   return (
     <div className="signup-page">
       <div className="signup-card">
-        {/* Left Animated Side */}
+        {/* Left Side */}
         <div className="signup-left">
           <div className={`left-content ${animate ? "animate" : ""}`}>
-            <img
-              src="/logo.jpg.png"
-              alt="BookieReserve Logo"
-              className="logo-image-large"
-            />
+            <img src="/logo.jpg.png" alt="BookieReserve Logo" className="logo-image-large" />
             <h1 className="brand-name">
               Bookie<span>Reserve</span>
             </h1>
           </div>
         </div>
 
-        {/* Right Form Side */}
+        {/* Right Side Form */}
         <div className="signup-right">
           <h1 className="signup-title">Create your account</h1>
 
@@ -135,15 +182,9 @@ const SignupPage = () => {
               <button
                 type="button"
                 className="toggle-password"
-                onClick={() =>
-                  setShowConfirmPassword(!showConfirmPassword)
-                }
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               >
-                {showConfirmPassword ? (
-                  <EyeOff size={20} />
-                ) : (
-                  <Eye size={20} />
-                )}
+                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
 
@@ -165,19 +206,10 @@ const SignupPage = () => {
             </button>
           </form>
 
-          {/* Social Login */}
           <div className="social-section">
             <p className="social-text">or sign up using</p>
             <div className="social-buttons">
-              <button className="social-btn facebook">
-                <svg viewBox="0 0 24 24" width="24" height="24">
-                  <path
-                    fill="currentColor"
-                    d="M12 2.04c-5.5 0-10 4.49-10 10.02 0 5 3.66 9.15 8.44 9.9v-7H7.9v-2.9h2.54V9.85c0-2.51 1.49-3.89 3.78-3.89 1.09 0 2.23.19 2.23.19v2.47h-1.26c-1.24 0-1.63.77-1.63 1.56v1.88h2.78l-.45 2.9h-2.33v7a10 10 0 0 0 8.44-9.9c0-5.53-4.5-10.02-10-10.02Z"
-                  />
-                </svg>
-              </button>
-              <button className="social-btn google">
+              <button className="social-btn google" onClick={handleGoogleSignUp}>
                 <svg viewBox="0 0 24 24" width="24" height="24">
                   <path
                     fill="#4285F4"

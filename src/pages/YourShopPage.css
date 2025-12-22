@@ -1,0 +1,56 @@
+.shop-container {
+  margin: 40px auto;
+  padding: 30px;
+  max-width: 800px;
+  border-radius: 20px;
+  background: rgba(40, 10, 80, 0.6);
+  box-shadow: 0 0 25px rgba(167, 56, 255, 0.2);
+  color: white;
+  text-align: center;
+}
+
+.shop-title {
+  font-size: 28px;
+  margin-bottom: 16px;
+}
+
+.shop-title span {
+  color: var(--neon-cyan);
+  text-shadow: 0 0 10px var(--neon-cyan);
+}
+
+.shop-info p {
+  font-size: 16px;
+  margin: 6px 0;
+  color: var(--text-light);
+}
+
+.shop-section {
+  margin-top: 30px;
+  text-align: left;
+}
+
+.shop-section h3 {
+  color: var(--neon-purple);
+  margin-bottom: 10px;
+}
+
+.shop-section ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.shop-section li {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 10px 16px;
+  margin-bottom: 8px;
+  border-radius: 10px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.shop-section li:hover {
+  background: linear-gradient(90deg, var(--neon-pink), var(--neon-purple));
+  box-shadow: 0 0 10px var(--neon-pink);
+  transform: scale(1.02);
+}

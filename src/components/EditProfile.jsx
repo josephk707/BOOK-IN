@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import ServiceManager from "./components/ServiceManager";
-import SlotManager from "./components/SlotManager";
-import "./components/NeonForm.css";
+import ServiceManager from "./ServiceManager";
+import SlotManager from "./SlotManager";
+import "./NeonForm.css";
 
-const EditProfile = ({ shopId }) => {
+const EditProfile = ({ shopId, existingData, onSave, onCreate }) => {
   const [businessName, setBusinessName] = useState("");
   const [location, setLocation] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
 
   // SERVICES STATE
   const [services, setServices] = useState([
@@ -31,10 +30,10 @@ const EditProfile = ({ shopId }) => {
 
   // TIME SLOTS STATE
   const [timeSlots, setTimeSlots] = useState([
-    { date: "", status: "free", start: "", end: "" }
+    { date: "", status: "Free", start: "", end: "" }
   ]);
 
-  const addSlot = () => setTimeSlots([...timeSlots, { date: "", status: "free", start: "", end: "" }]);
+  const addSlot = () => setTimeSlots([...timeSlots, { date: "", status: "Free", start: "", end: "" }]);
 
   const updateSlot = (index, field, value) => {
     const updated = [...timeSlots];
@@ -48,86 +47,126 @@ const EditProfile = ({ shopId }) => {
     }
   };
 
-  // Load existing data when component mounts
+  // Load existing data when component mounts or when existingData changes
   useEffect(() => {
-    const loadBusinessData = async () => {
-      if (shopId) {
-        try {
-          const response = await axios.get(`http://localhost:5000/api/v1/getshopbyid/${shopId}`);
-          if (response.data && response.data.data) {
-            const business = response.data.data;
-            setBusinessName(business.name || "");
-            setLocation(business.location || "");
+    if (existingData) {
+      // Map backend field names to frontend field names
+      setBusinessName(existingData.name || "");
+      setLocation(existingData.location || "");
 
-            // Load services
-            if (business.services && business.services.length > 0) {
-              setServices(business.services.map(s => ({
-                name: s.serviceName || "",
-                duration: s.duration || "",
-                price: s.price || ""
-              })));
-            }
+      // Map services: backend has serviceName, frontend uses name
+      if (existingData.services && existingData.services.length > 0) {
+        setServices(existingData.services.map(s => ({
+          name: s.serviceName || "",
+          duration: s.duration || "",
+          price: s.price || "",
+        })));
+      }
 
-            // Load time slots
-            if (business.timeSlots && business.timeSlots.length > 0) {
-              setTimeSlots(business.timeSlots.map(t => ({
-                date: t.date || "",
-                status: t.status || "free",
-                start: t.startTime || "",
-                end: t.endTime || ""
-              })));
-            }
-          }
-        } catch (error) {
-          console.error("Error loading business data:", error);
-          setMessage("⚠️ Could not load business data. Please enter details manually.");
+      // Map timeSlots: backend has startTime/endTime, frontend uses start/end
+      if (existingData.timeSlots && existingData.timeSlots.length > 0) {
+        setTimeSlots(existingData.timeSlots.map(t => ({
+          date: t.date || "",
+          status: t.status || "Free",
+          start: t.startTime || "",
+          end: t.endTime || "",
+        })));
+      }
+    } else if (shopId) {
+      // Fallback: load data from API if no existingData provided
+      loadShopData();
+    }
+  }, [existingData, shopId]);
+
+  const loadShopData = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`http://localhost:5000/api/v1/getshopbyid/${shopId}`);
+
+      if (response.data && response.data.data) {
+        const shop = response.data.data;
+
+        // Map backend field names to frontend field names
+        setBusinessName(shop.name || "");
+        setLocation(shop.location || "");
+
+        // Map services: backend has serviceName, frontend uses name
+        if (shop.services && shop.services.length > 0) {
+          setServices(shop.services.map(s => ({
+            name: s.serviceName || "",
+            duration: s.duration || "",
+            price: s.price || "",
+          })));
+        }
+
+        // Map timeSlots: backend has startTime/endTime, frontend uses start/end
+        if (shop.timeSlots && shop.timeSlots.length > 0) {
+          setTimeSlots(shop.timeSlots.map(t => ({
+            date: t.date || "",
+            status: t.status || "Free",
+            start: t.startTime || "",
+            end: t.endTime || "",
+          })));
         }
       }
-    };
-
-    loadBusinessData();
-  }, [shopId]);
+    } catch (error) {
+      console.error("Error loading shop data:", error);
+      alert("Failed to load shop data. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const saveChanges = async () => {
     if (!businessName.trim() || !location.trim()) {
-      setMessage("⚠️ Please fill in business name and location.");
+      alert("Please fill in business name and location.");
       return;
     }
 
     if (services.some(s => !s.name.trim())) {
-      setMessage("⚠️ Please provide names for all services.");
+      alert("Please provide names for all services.");
       return;
     }
 
     try {
       setLoading(true);
-      setMessage("");
 
+      // Map frontend field names to backend field names
       const payload = {
-        name: businessName,
-        location: location,
+        name: businessName, // backend expects 'name', not 'businessName'
+        location,
         services: services.map(s => ({
-          serviceName: s.name,
+          serviceName: s.name, // backend expects 'serviceName', not 'name'
           duration: Number(s.duration) || 30,
           price: Number(s.price) || 0,
         })),
         timeSlots: timeSlots.map(t => ({
           date: t.date,
           status: t.status,
-          startTime: t.start,
-          endTime: t.end,
+          startTime: t.start, // backend expects 'startTime', not 'start'
+          endTime: t.end, // backend expects 'endTime', not 'end'
         })),
       };
 
-      await axios.put(
-        `http://localhost:5000/api/v1/updateshopbyid/${shopId}`,
-        payload
-      );
-
-      setMessage("✅ Profile updated successfully!");
+      // Use the callback if provided, otherwise fallback to direct API call
+      if (onSave) {
+        await onSave(payload);
+      } else if (shopId) {
+        await axios.put(
+          `http://localhost:5000/api/v1/updateshopbyid/${shopId}`,
+          payload
+        );
+        alert("Profile updated successfully!");
+      } else if (onCreate) {
+        await onCreate(payload);
+      } else {
+        // Fallback for new shop creation
+        const response = await axios.post(`http://localhost:5000/api/v1/createshop`, payload);
+        alert("Shop created successfully!");
+      }
     } catch (error) {
-      console.error("Update error:", error);
-      setMessage("⚠️ Update failed: " + (error.response?.data?.message || error.message));
+      console.error("Save error:", error);
+      alert("Save failed: " + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
     }
@@ -135,30 +174,31 @@ const EditProfile = ({ shopId }) => {
 
   return (
     <div className="profile-wrapper">
+      {loading && (
+        <div style={{ textAlign: "center", padding: "20px", color: "#ff73fa" }}>
+          Loading shop data...
+        </div>
+      )}
 
       {/* BUSINESS INFO */}
       <div className="section-card">
         <h3 className="section-title">Business Information</h3>
 
-        <div className="row-item" style={{marginBottom: '15px'}}>
-          <input
-            type="text"
-            className="neon-input"
-            placeholder="Business Name"
-            value={businessName}
-            onChange={(e) => setBusinessName(e.target.value)}
-          />
-        </div>
+        <input
+          type="text"
+          className="neon-input"
+          placeholder="Business Name"
+          value={businessName}
+          onChange={(e) => setBusinessName(e.target.value)}
+        />
 
-        <div className="row-item">
-          <input
-            type="text"
-            className="neon-input"
-            placeholder="Location"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-          />
-        </div>
+        <input
+          type="text"
+          className="neon-input"
+          placeholder="Location"
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+        />
       </div>
 
       {/* SERVICES MANAGER */}
@@ -177,16 +217,9 @@ const EditProfile = ({ shopId }) => {
         deleteSlot={deleteSlot}
       />
 
-      {/* STATUS MESSAGE */}
-      {message && (
-        <div className={`status-msg ${message.includes("✅") ? "success" : "error"}`}>
-          {message}
-        </div>
-      )}
-
       {/* SAVE BUTTON */}
       <button className="save-btn" onClick={saveChanges} disabled={loading}>
-        {loading ? "💾 Updating..." : "💾 Save Changes"}
+        {loading ? "💾 Saving..." : "💾 Save Changes"}
       </button>
     </div>
   );

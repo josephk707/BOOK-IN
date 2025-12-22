@@ -1,6 +1,6 @@
 .signup-page {
   min-height: 100vh;
-  background: radial-gradient(circle at top left, #1a103f, #090314 70%);
+  background: radial-gradient(circle at top left, #e6e6e7, #f8f6fa 70%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -21,14 +21,14 @@
 
 /* Left side */
 .signup-left {
-  background: linear-gradient(135deg, #a855f7, #ff4ecd);
+  background: linear-gradient(135deg, #f97316, #fb7185);
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   color: white;
   overflow: hidden;
-  box-shadow: inset 0 0 50px rgba(168, 85, 247, 0.5);
+  box-shadow: inset 0 0 50px #f97316;
 }
 
 .left-content {
@@ -51,8 +51,8 @@
   opacity: 0;
   animation: logoUp 1s ease forwards;
   animation-delay: 0.5s;
-  box-shadow: 0 0 20px #ff4ecd, 0 0 40px #a855f7;
-  border: 3px solid #22d3ee;
+  box-shadow: 0 0 20px #f97316, 0 0 40px #fb7185;
+  border: 3px solid #f8fbfb;
 }
 
 .brand-name {
@@ -164,7 +164,7 @@
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: #a845ff;
+  color: #f97316;
   cursor: pointer;
   padding: 4px;
   display: flex;
@@ -173,7 +173,7 @@
   transition: color 0.2s ease;
 }
 .toggle-password:hover {
-  color: #7b2ac4;
+  color: #f97316;
 }
 
 .terms-group {
@@ -184,10 +184,10 @@
   color: #6a5d7a;
 }
 .terms-group input[type="checkbox"] {
-  accent-color: #a845ff;
+  accent-color: #f97316;
 }
 .terms-link {
-  color: #a845ff;
+  color: #fb7185;
   font-weight: 600;
 }
 
@@ -198,15 +198,15 @@
   border-radius: 30px;
   font-size: 15px;
   font-weight: 600;
-  background: linear-gradient(135deg, #ff4ecd, #a855f7);
+  background: linear-gradient(135deg, #f97316, #fb7185);
   color: #fff;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 0 10px #ff4ecd, 0 0 20px #a855f7;
+  box-shadow: 0 0 10px #f97316, 0 0 20px #eeecef;
 }
 .btn-create:hover {
   transform: translateY(-2px);
-  box-shadow: 0 0 20px #a855f7, 0 0 30px #ff4ecd;
+  box-shadow: 0 0 20px #f97316, 0 0 30px #fb7185;
 }
 
 /* Social */
@@ -254,13 +254,13 @@
   color: #6b5d7a;
 }
 .login-link span {
-  color: #a845ff;
+  color: #f97316;
   font-weight: 600;
   text-decoration: underline;
   cursor: pointer;
 }
 .login-link span:hover {
-  color: #7b2ac4;
+  color: #f97316;
 }
 
 /* Responsive */

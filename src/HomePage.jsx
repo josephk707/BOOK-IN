@@ -1,3 +1,4 @@
+// src/HomePage.jsx
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Calendar, Building2, Sun, Moon } from "lucide-react";
@@ -11,24 +12,34 @@ const HomePage = () => {
   const customerRef = useRef(null);
   const navigate = useNavigate();
 
+  // Close dropdown when clicking outside
   useEffect(() => {
-    function onDocClick(e) {
+    const handleDocClick = (e) => {
       if (customerRef.current && !customerRef.current.contains(e.target)) {
         setShowCustomer(false);
       }
-    }
-    document.addEventListener("click", onDocClick);
-    return () => document.removeEventListener("click", onDocClick);
+    };
+    document.addEventListener("click", handleDocClick);
+    return () => document.removeEventListener("click", handleDocClick);
   }, []);
 
+  // Dark mode toggle
   useEffect(() => {
-    if (darkMode) document.body.classList.add("dark-mode");
-    else document.body.classList.remove("dark-mode");
+    document.body.classList.toggle("dark-mode", darkMode);
   }, [darkMode]);
+
+  // Handle navigation based on selected role
+  const handleNavigate = (path) => {
+    if (!selectedRole) {
+      alert("Please select a role first (Customer or Business).");
+      return;
+    }
+    navigate(path, { state: { role: selectedRole } });
+  };
 
   return (
     <div className="home-page">
-      {/* Header */}
+      {/* ===== Header ===== */}
       <header className="header">
         <div className="header-container">
           <div className="logo-section">
@@ -51,7 +62,7 @@ const HomePage = () => {
                 className="nav-link"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setShowCustomer((s) => !s);
+                  setShowCustomer((prev) => !prev);
                 }}
               >
                 Customer Service
@@ -76,7 +87,7 @@ const HomePage = () => {
         </div>
       </header>
 
-      {/* Hero Section */}
+      {/* ===== Hero Section ===== */}
       <section className="hero">
         <div className="hero-left">
           <span className="badge">Smart Scheduling Platform</span>
@@ -89,13 +100,7 @@ const HomePage = () => {
               availability and instant confirmations.
             </p>
           </div>
-          <div className="calendar-preview">
-            <Calendar size={18} />
-            <p>
-              Next Available: <strong>Today, 4:00 PM</strong>
-            </p>
-          </div>
-        </div>
+         </div>
 
         <div className="hero-right">
           <div className="hero-image-card floating">
@@ -108,12 +113,13 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Get Started Section */}
+      {/* ===== Get Started Section ===== */}
       <section className="get-started">
         <h2 className="section-title">Get Started</h2>
         <p className="section-subtitle">Choose your account type to begin</p>
 
         <div className="role-cards">
+          {/* Customer Card */}
           <div
             className={`role-card ${
               selectedRole === "customer" ? "role-card-active" : ""
@@ -129,6 +135,7 @@ const HomePage = () => {
             </p>
           </div>
 
+          {/* Business Card */}
           <div
             className={`role-card ${
               selectedRole === "business" ? "role-card-active" : ""
@@ -149,17 +156,13 @@ const HomePage = () => {
           <div className="auth-buttons">
             <button
               className="btn-outline"
-              onClick={() =>
-                navigate("/login", { state: { role: selectedRole } })
-              }
+              onClick={() => handleNavigate("/login")}
             >
               Login →
             </button>
             <button
               className="btn-primary"
-              onClick={() =>
-                navigate("/signup", { state: { role: selectedRole } })
-              }
+              onClick={() => handleNavigate("/signup")}
             >
               Sign Up 👤
             </button>
@@ -167,7 +170,7 @@ const HomePage = () => {
         )}
       </section>
 
-      {/* About Modal */}
+      {/* ===== About Modal ===== */}
       {showAbout && (
         <div className="about-overlay" onClick={() => setShowAbout(false)}>
           <div className="about-modal" onClick={(e) => e.stopPropagation()}>

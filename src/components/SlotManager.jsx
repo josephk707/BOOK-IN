@@ -21,8 +21,8 @@ const SlotManager = ({ timeSlots, updateSlot, addSlot, deleteSlot }) => {
             value={slot.status}
             onChange={(e) => updateSlot(index, "status", e.target.value)}
           >
-            <option value="free">Free</option>
-            <option value="booked">Booked</option>
+            <option value="Free">Free</option>
+            <option value="Booked">Booked</option>
           </select>
 
           <input

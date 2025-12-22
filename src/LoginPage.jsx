@@ -1,12 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Eye, EyeOff, User, Lock, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, User, Lock } from "lucide-react";
+import { auth, googleProvider } from "./firebase"; // ✅ include googleProvider
+import {
+  signInWithEmailAndPassword,
+  signInWithPopup,
+} from "firebase/auth";
 import "./LoginPage.css";
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const role = location.state?.role || "customer";
+
+  // ✅ Load role from navigation or localStorage
+  const [role, setRole] = useState(
+    location.state?.role || localStorage.getItem("userRole") || ""
+  );
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,7 +28,8 @@ const LoginPage = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleSubmit = (e) => {
+  // ✅ Handle Email/Password Login
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!email) return alert("Please enter your email");
@@ -27,8 +37,39 @@ const LoginPage = () => {
     if (password.length < 6)
       return alert("Password must be at least 6 characters");
 
-    if (role === "business") navigate("/business-dashboard");
-    else navigate("/customer-dashboard");
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+
+      if (role) localStorage.setItem("userRole", role);
+      alert("Login successful!");
+
+      // ✅ Redirect based on role
+      if (role === "business") navigate("/business-dashboard");
+      else navigate("/customer-dashboard");
+    } catch (error) {
+      console.error(error);
+      alert(error.message);
+    }
+  };
+
+  // ✅ Handle Google Sign-In
+  const handleGoogleSignIn = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+
+      // ✅ Persist user role
+      if (role) localStorage.setItem("userRole", role);
+
+      alert(`Welcome back, ${user.displayName || user.email}!`);
+
+      // ✅ Redirect based on role
+      if (role === "business") navigate("/business-dashboard");
+      else navigate("/customer-dashboard");
+    } catch (error) {
+      console.error("Google Sign-In Error:", error);
+      alert("Failed to sign in with Google. Please try again.");
+    }
   };
 
   return (
@@ -40,7 +81,8 @@ const LoginPage = () => {
             <img
               src="/logo.jpg.png"
               alt="BookieReserve Logo"
-              className="logo-image-large"
+              className=""
+              id="imgtitle"
             />
             <h1 className="brand-name">
               Bookie<span>Reserve</span>
@@ -106,6 +148,23 @@ const LoginPage = () => {
             <button type="submit" className="btn-login">
               Sign In
             </button>
+
+      {/* ✅ Google Sign-In */}
+<div className="social-login">
+  <p>or sign in using</p>
+  <button
+    type="button"
+    className="social-btn google"
+    onClick={handleGoogleSignIn}
+  >
+    <img
+      src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+      alt="Google icon"
+      className="google-icon"
+    />
+  </button>
+</div>
+
           </form>
 
           <p className="signup-text">

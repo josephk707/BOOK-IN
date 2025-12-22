@@ -431,3 +431,78 @@ body.dark-mode {
 .neon-hue {
   animation: hueRotate 5s linear infinite;
 }
+/* ======================================
+   🌞 LIGHT MODE FIX (IMPORTANT)
+   This fixes invisible text & cards
+====================================== */
+
+/* When dark mode is OFF */
+body:not(.dark-mode) {
+  --bg: #f8fafc;
+  --text: #0f172a;
+
+  --card-bg: #ffffff;
+  --bg-panel: #ffffff;
+  --glass-border: #e5e7eb;
+
+  --primary: #f97316;
+  --accent: #fb7185;
+}
+
+/* Header fix */
+body:not(.dark-mode) .header {
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+/* Hero text fix */
+body:not(.dark-mode) .subtitle,
+body:not(.dark-mode) .section-subtitle {
+  color: #475569;
+  opacity: 1;
+}
+
+/* Calendar preview */
+body:not(.dark-mode) .calendar-preview {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  color: #0f172a;
+}
+
+/* Role cards (BOXES ISSUE FIX) */
+body:not(.dark-mode) .role-card {
+  background: #ffffff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+/* Role description text */
+body:not(.dark-mode) .role-desc {
+  color: #475569;
+}
+
+/* Buttons fix */
+body:not(.dark-mode) .btn-outline {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #e5e7eb;
+  box-shadow: none;
+}
+
+body:not(.dark-mode) .btn-outline:hover {
+  background: #f1f5f9;
+}
+
+body:not(.dark-mode) .btn-primary {
+  background: linear-gradient(135deg, #f97316, #fb7185);
+  box-shadow: 0 6px 18px rgba(249, 115, 22, 0.35);
+}
+
+/* Hero image glow soft in light mode */
+body:not(.dark-mode) .hero-image-card::after {
+  background: radial-gradient(
+    circle at center,
+    rgba(249, 115, 22, 0.15),
+    rgba(251, 113, 133, 0.1)
+  );
+}
+
