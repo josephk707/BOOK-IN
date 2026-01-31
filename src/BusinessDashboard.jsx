@@ -448,10 +448,15 @@ const BusinessDashboard = () => {
                   isClearable
                   placeholder="Select or type a service"
                   options={
-                    (CATEGORY_SERVICES[businessData.category] || []).flatMap(cat =>
-                      cat.services.map(srv => ({ label: srv, value: srv }))
-                    )
-                  }
+  Array.isArray(CATEGORY_SERVICES[businessData.category])
+    ? CATEGORY_SERVICES[businessData.category].flatMap(cat =>
+        cat?.services
+          ? cat.services.map(srv => ({ label: srv, value: srv }))
+          : [{ label: cat, value: cat }]
+      )
+    : []
+}
+
                   value={
                     service.serviceName
                       ? { label: service.serviceName, value: service.serviceName }
